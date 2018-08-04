@@ -38,11 +38,11 @@ class TrioClient:
 
     async def api_session(self):
         self.session = asks.Session()
-        async with trio.open_nursery() as session_nursery:
+        async with trio.open_nursery() as session_nursery: # pylint: disable=no-member
             session_nursery.start_soon(self.request_loop)
             
     async def request_loop(self):
-        async with trio.open_nursery() as requests_nursery:
+        async with trio.open_nursery() as requests_nursery: # pylint: disable=no-member
             async for method, args in self.requests:
                 print('Making request to {}'.format(args))
                 requests_nursery.start_soon(self.make_request, method, args)
