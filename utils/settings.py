@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
 import os
-import random
-import string
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import dsa, rsa
@@ -15,9 +13,6 @@ DEFAULT_SETTINGS_FOLDER_PATH = os.path.join(os.environ.get('HOME'), DEFAULT_SETT
 DEFAULT_CREDENTIALS_FILE_PATH = os.path.join(DEFAULT_SETTINGS_FOLDER_PATH, DEFAULT_CREDENTIALS_FILE_NAME)
 DEFAULT_PRIVATE_KEY_FILE_PATH = os.path.join(DEFAULT_SETTINGS_FOLDER_PATH, DEFAULT_PRIVATE_KEY_FILE_NAME)
 
-def jti(length):
-    return ''.join([random.choice(string.ascii_letters + string.digits) 
-                   for n in range(length)])
 
 class Settings:
     def __init__(self, credentials_file_path=DEFAULT_CREDENTIALS_FILE_PATH, 
@@ -26,20 +21,24 @@ class Settings:
         self.credentials_file_path = credentials_file_path
         with open(self.credentials_file_path, 'rb') as credentials_file:
             self.credentials = json.loads(credentials_file.read())
+
         self.client_id = self.credentials['boxAppSettings']['clientID']
         self.client_secret = self.credentials['boxAppSettings']['clientSecret']
         self.enterprise_id = self.credentials['enterpriseID']
+
         if self.credentials['boxAppSettings']['appAuth']['publicKeyID']:
             self.public_key_id = self.credentials['boxAppSettings']['appAuth']['publicKeyID']
             _private_key = self.credentials['boxAppSettings']['appAuth']['privateKey'].encode('utf-8')
             _passphrase = self.credentials['boxAppSettings']['appAuth']['passphrase'].encode('utf-8')
             self.key = load_pem_private_key(_private_key, _passphrase, default_backend())
+
         if os.path.exists(privat_key_file_path):
             self.public_key_id = self.credentials['boxAppSettings']['appAuth']['publicKeyID']
             with open(privat_key_file_path, 'rb') as private_key_file:
                 _private_key = private_key_file.read()
                 _passphrase = passphrase
             self.key = load_pem_private_key(_private_key, _passphrase, default_backend())
+
         if 'webhooks' in self.credentials:
             self.webhook_primary_key = self.credentials['webhooks']['primaryKey']
             self.webhook_secondary_key = self.credentials['webhooks']['secondaryKey']

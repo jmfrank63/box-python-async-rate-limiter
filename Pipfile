@@ -58,6 +58,8 @@ ipython = "==6.5.0"
 ipython_genutils = "==0.2.0"
 jedi = "==0.12.1"
 rope = "==0.10.7"
+neovim = "*"
+yapf = "*"
 
 [requires]
 python_version = "3.7"
