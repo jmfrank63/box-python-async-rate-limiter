@@ -12,16 +12,16 @@ async def grabber(domain):
     try:
         r = await session.request(*domain, timeout=3)
         results.append((domain[1], r.status_code))
-        #print(f'Got status {r.status_code} for {domain[1]}')
+        print(f'Got status {r.status_code} for {domain[1]}')
     except:
         pass
-        #print(f'Domain {domain[1]} skipped')
+        print(f'Domain {domain[1]} skipped')
 
 async def gen(nursery):
     async with await trio.open_file('downloads/domains.txt') as domain_file:
         idx = 0
         async for domain in domain_file:
-            #print(f'{idx} Domain {domain[:-1]} added for request...')
+            print(f'{idx} Domain {domain[:-1]} added for request...')
             nursery.start_soon(grabber, ('GET', domain[:-1]))
             idx += 1
 

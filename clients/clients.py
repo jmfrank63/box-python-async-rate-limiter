@@ -1,70 +1,49 @@
 # -*- coding: utf-8 -*-
-from utils.settings import Settings
-from asks import Session
+
 from collections import deque
 
 import asks
-import curio
 import json
-import requests
-import random
 import string
-import time
+from pprint import pprint
 import trio
+import time
 
-from authlib.specs.rfc7519 import jwt
+DEFAULT_CONNECTIONS = 200
+FILE_ENDPOINT = '/files/'
+FOLDER_ENDPOINT = '/folders/'
 
+class Client:
 
-class TrioClient:
-    def __init__(self, token, nursery, connections=10000, logging=False):
-        asks.init('trio')
-        self.token = token
-        self.session = asks.Session(
-            connections=connections,
-            headers={f'Authorization bearer: {self.token}'})
+    RATE = 10
+    MAX_TOKENS = 10
 
-    async def request(self, method, url):
+    def __init__(self, auth, connections=DEFAULT_CONNECTIONS, logging=False):
+        self.auth = auth
+        self.auth.session.headers.update(
+            {'Authorization': 'Bearer ' + self.auth.token})
+        self.tokens = self.MAX_TOKENS
+        self.updated_at = time.monotonic()
+
+    async def get_folder_info(self, folder_id):
+        await self.wait_for_token()
+        self.auth.session.endpoint = FOLDER_ENDPOINT
         try:
-            response = await self.session.request(method, url, timeout=5)
-            print(f'Got response {response.status_code} from {url}')
-            return response.status_code
-        except (asks.errors.AsksException, OSError, trio.BrokenStreamError,
-                ValueError, KeyError) as exp:
-            print(f'Ignoring call to {url} because of {exp}')
+            response = await self.auth.session.get(path=str(folder_id), timeout=60, retries=5)
+        except asks.errors.BadHttpResponse:
+            response = await self.auth.session.get(path=str(folder_id), timeout=60, retries=5) 
+        return response
 
+    async def wait_for_token(self):
+        while self.tokens < 1:
+            self.add_new_tokens()
+            await trio.sleep(1)
+        self.tokens -= 1
 
-class JWTAuth(Settings):
-    def __init__(self, settings_path, alg='RS256', timeout=30, user_id=None):
-        super().__init__(settings_path)
-        self.url = 'https://api.box.com/oauth2/token'
-        self.header = {'alg': alg, 'typ': u'JWT', 'kid': self.public_key_id}
-        if user_id:
-            sub = user_id
-            sub_type = 'user'
-        else:
-            sub = self.enterprise_id
-            sub_type = 'enterprise'
-        exp = int(time.time()) + timeout
-        claim = {
-            "iss": self.client_id,
-            "sub": sub,
-            "box_sub_type": sub_type,
-            "aud": self.url,
-            "jti": self.random_string(64),
-            "exp": exp
-        }
-        assertion = jwt.encode(self.header, claim, self.key).decode('utf-8')
-        headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-        payload = 'grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&\
-client_id={}&client_secret={}&assertion={}'\
-                   .format(self.client_id, self.client_secret, assertion)
-        response = requests.post(self.url, headers=headers, data=payload)
-        self.access = json.loads(response.content)
-        self.valid = int(time.time()) + self.access['expires_in']
-        self.token = self.access['access_token']
-
-    def random_string(self, length):
-        return ''.join([
-            random.choice(string.ascii_letters + string.digits)
-            for n in range(length)
-        ])
+    def add_new_tokens(self):
+        now = time.monotonic()
+        time_since_update = now - self.updated_at
+        new_tokens = time_since_update * self.RATE
+        if new_tokens > 1:
+            self.tokens = min(self.tokens + new_tokens, self.MAX_TOKENS)
+            self.updated_at = now
