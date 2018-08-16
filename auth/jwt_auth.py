@@ -21,7 +21,7 @@ class JWTAuth(Settings):
         asks.init('trio')
         self.session = asks.Session(connections=200,
                                     persist_cookies=True)
-        payload = self.setup_jwt(alg=alg, timeout=timeout, user_id=user_id)
+        payload = self.make_payload(alg=alg, timeout=timeout, user_id=user_id)
         trio.run(self.authorize, AUTH_URL, AUTH_HEADERS, payload)
 
     async def authorize(self, url, headers, payload):
@@ -30,7 +30,7 @@ class JWTAuth(Settings):
         self.valid = int(time.time()) + self._access['expires_in']
         self.token = self._access['access_token']
 
-    def setup_jwt(self, alg, timeout, user_id):
+    def make_payload(self, alg, timeout, user_id):
         self.auth_url = AUTH_URL
         
         if user_id:
