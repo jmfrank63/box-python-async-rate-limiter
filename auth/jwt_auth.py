@@ -19,8 +19,7 @@ class JWTAuth(Settings):
     def __init__(self, settings_path, alg='RS256', timeout=30, user_id=None):
         super().__init__(settings_path)
         asks.init('trio')
-        self.session = asks.Session(connections=200,
-                                    persist_cookies=True)
+        self.session = asks.Session()
         payload = self.make_payload(alg=alg, timeout=timeout, user_id=user_id)
         trio.run(self.authorize, AUTH_URL, AUTH_HEADERS, payload)
 

@@ -12,14 +12,16 @@ import timeit
 import time
 import os
 
-API_BASE = 'https://api.box.com/2.0'
-
-FOLDER =  50245725082
+FOLDER =  46253564892 #50245725082
 
 folders = {}
 
 async def get_folders(folder_id, nursery):
-        async def add_children(response):
+        response = await client.get_folder_info(folder_id)
+        while response.status_code == 429:
+            wait = int(response.headers['Retry-After'])
+            await trio.sleep(int(wait))
+        if response.status_code == 200:
             content = json.loads(response.content)
             child_folders = []
             for entry in content['item_collection']['entries']:
@@ -31,15 +33,6 @@ async def get_folders(folder_id, nursery):
             print(folder_id, child_folders)
             folders[folder_id] = child_folders
 
-        response = await client.get_folder_info(folder_id)
-        if response.status_code == 200:
-            await add_children(response)
-        elif response.status_code == 429:
-            while response.status_code == 429:
-                wait = int(response.headers['Retry-After'])
-                await trio.sleep(int(wait))
-                await add_children(response)
-
 async def get_folder_tree(nursery, folder):
     nursery.start_soon(get_folders, folder, nursery)
 
@@ -50,7 +43,6 @@ async def main():
 if __name__ == '__main__':
     jwt_auth = JWTAuth(os.path.join('downloads','cwe_jwt.json'))
     client = Client(jwt_auth)
-    client.auth.session.base_location = API_BASE
-    client.auth.session.headers.update({'As-User' : '1827788631'})
+    client.as_user('1827788631')
     trio.run(main)
     print(folders)
