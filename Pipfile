@@ -48,7 +48,7 @@ wrapt = "==1.10.11"
 async_generator = "==1.9"
 Authlib = "==0.8"
 prompt_toolkit = "==1.0.15"
-Pygments = "==2.2.0"
+Pygments = "==2.7.4"
 
 [dev-packages]
 pyfakefs = "==3.4.3"
